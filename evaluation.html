@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>MAC 2019 - Evaluation</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<link rel="stylesheet" type="text/css" href="evaluation.css">
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="evaluation.js"></script>
+</head>
+<body>
+    <h1>MAC - Evaluation</h1>
+    <section class="card">
+    <header class="card-header">
+        Docs:
+    </header>
+    <div id="all_docs" class="card-body"></div>
+    <div class="card-body row text-center">
+        <div class="col-sm-3">
+            # docs:
+            <div id="number_docs" class="value"></div>
+        </div>
+        <div class="col-sm-3">
+            # retrieved:
+            <div class="value"><input type="number" id="number_retrieved" min="0" max=26 /></div>
+        </div>
+        <div class="col-sm-3">
+            # relevant:
+            <div id="number_relevant" class="value"></div>
+        </div>
+        <div class="col-sm-3">
+            # retrieved relevant:
+            <div id="number_retrieved_relevant" class="value"></div>
+        </div>
+    </div>
+    </section>
+    <section class="card">
+    <header class="card-header">
+        Relevant docs:
+    </header>
+    <div id="relevant_docs" class="card-body"></div>
+    </section>
+    <section class="card">
+    <header class="card-header">
+        Retrieved docs:
+    </header>
+    <div class="card-body row">
+        <header class="col-sm-2">
+            <div class="doc_detail">
+                <div>Rank</div>
+                <div class="doc">!</div>
+                <div>Precision</div>
+                <div>Recall</div>
+            </div>
+        </header>
+        <div class="col-sm-10" id="retrieved_docs"></div>
+    </div>
+    <div class="card-body row text-center">
+        <div class="col-sm-3">
+            precision of query:
+            <div id="query_precision" class="value"></div>
+        </div>
+        <div class="col-sm-3">
+            recall of query:
+            <div id="query_recall" class="value"></div>
+        </div>
+        <div class="col-sm-3">
+            average precision of query:
+            <div id="query_ap" class="value"></div>
+        </div>
+        <div class="col-sm-3">
+            R-precision of query:
+            <div id="query_rprecision" class="value"></div>
+        </div>
+    </div>
+    </section>
+    <section class="card">
+    <header class="card-header">
+        Standard Recall Levels:
+    </header>
+    <div class="card-body row">
+    <div id="recall_precision" class="col-sm-6">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="use_formula_input">
+            <label class="custom-control-label" for="use_formula_input">Use formula visualisation (instead of algorithm)</label>
+        </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <span class="input-group-text">Step</span>
+            </div>
+            <input type="number" id="standard_recall_level_step" min="0" value="0" class="form-control" />
+
+        </div>
+    </div>
+    </div>
+    </section>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script>
+    document.write(
+      '<script src="http://' +
+        'localhost:35729'+ '/livereload.js?snipver=1"></' +
+        'script>'
+    );
+  </script>
+</body>
+</html>

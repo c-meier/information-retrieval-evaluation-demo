@@ -1,0 +1,70 @@
+.doc_detail {
+    display: inline-block;
+    text-align: center;
+    margin: 5px;
+}
+.doc {
+    margin: 2px;
+    padding: 1px;
+    display: inline-block;
+    border-radius: 3px;
+    height: 29px;
+    width: 29px;
+    text-align: center;
+    border: 1px solid lightgray;
+}
+
+.doc[retrieved=true] {
+    border: 2px solid black;
+}
+
+.doc[relevant=true] {
+    background-color: greenyellow
+}
+
+.value {
+    font-size: 1.4em;
+    font-family: "Inconsolata";
+}
+
+.interpolation_line {
+    fill: none;
+    stroke: #33b86f;
+    stroke-width: 3;
+}
+
+.recall_precision_line {
+    fill: none;
+    stroke: #ffab00;
+    stroke-width: 3;
+}
+
+.dot {
+    fill: #ffab00;
+    stroke: lightgray;
+    stroke-width: 1px;
+}
+.dot[retrieved=true] {
+    stroke: black;
+    fill: white;
+}
+.dot[relevant=true] {
+    fill: greenyellow;
+}
+.srl {
+    fill: #33b86f;
+}
+.separation {
+    stroke: #0000ff66;
+    stroke-width: 1px;
+}
+.line_to_max {
+    stroke: cadetblue;
+    stroke-width: 1px;
+    stroke-dasharray: 2px;
+}
+.selection {
+    stroke: red;
+    stroke-width: 2px;
+    fill: none;
+}
