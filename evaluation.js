@@ -15,16 +15,48 @@ Object.defineProperty(Array.prototype, 'span',{
   
       return [this.slice(0, i), this.slice(i)];
     }
-  });
-  Object.defineProperty(Array.prototype, 'last',{
+});
+Object.defineProperty(Array.prototype, 'last',{
     value:function(){
-      var m = this.length;  
-      return this[m -1];
+        var m = this.length;  
+        return this[m -1];
     }
-  });
-  
+});
+Object.defineProperty(Array.prototype, 'shuffle',{
+    value:function() {
+        var j, x, i;
+        for (i = this.length - 1; i > 0; i--) {
+            j = Math.floor(Math.random() * (i + 1));
+            x = this[i];
+            this[i] = this[j];
+            this[j] = x;
+        }
+        return this;
+    }
+});
 
-function calculateRankPrecisionAndRecall(retrieveds, relevants) {
+/**
+ * @typedef Doc
+ * @type {object}
+ * @property {boolean} relevant
+ * @property {boolean} retrieved
+ * @property {?string} id
+ */
+
+/**
+ * @typedef RetrievedDoc
+ * @type {Doc}
+ * @property {number} rank
+ * @property {number} precision
+ * @property {number} recall
+ */
+
+/**
+ * 
+ * @param {RetrievedDoc[]} retrieveds 
+ * @param {number} nbRelevant
+ */
+function calculateRankPrecisionAndRecall(retrieveds, nbRelevant) {
     let nbRetrievedRelevant = 0;
     for(let i = 0; i < retrieveds.length; i++) {
         let d = retrieveds[i];
@@ -32,10 +64,14 @@ function calculateRankPrecisionAndRecall(retrieveds, relevants) {
             nbRetrievedRelevant++;
         }
         d.precision = nbRetrievedRelevant / (d.rank + 1); 
-        d.recall = nbRetrievedRelevant / relevants.length;
+        d.recall = nbRetrievedRelevant / nbRelevant;
     }
 }
 
+/**
+ * 
+ * @param {RetrievedDoc[]} retrievedRelevants 
+ */
 function calculateStandardRecallLevels(retrievedRelevants) {
     let stdRecallLevels = Array(11).fill(0);
     for(let i = 0; i < retrievedRelevants.length; i++) {
@@ -53,6 +89,10 @@ function calculateStandardRecallLevels(retrievedRelevants) {
     return stdRecallLevels;
 }
 
+/**
+ * 
+ * @param {RetrievedDoc[]} relevants 
+ */
 function calculateInterpolationLine(relevants) {
     let interpolation = relevants.map(d => ({...d}));
     for(let i = 0; i < interpolation.length; i++) {
@@ -79,41 +119,58 @@ function calculateInterpolationLine(relevants) {
     return interpolationLine;
 }
 
-function displayStatistics(docs, retrieveds, relevants, retrievedRelevants) {
+/**
+ * 
+ * @param {InformationRetrievalQuery} irq 
+ */
+function displayStatistics(irq) {
     d3.select('#number_docs.value')
-        .text( docs.length );
-    d3.select('#number_relevant.value')
-        .text( relevants.length );
+        .text( `${irq.nbDoc}+` );
+    d3.select('#number_retrieved')
+        .property("value", irq.nbRetrieved);
     d3.select('#number_retrieved_relevant.value')
-        .text( retrievedRelevants.length );
+        .text( irq.nbRetrievedRelevant );
+    d3.select('#number_relevant')
+        .property("min", irq.nbRetrievedRelevant )
+        .property("value", irq.nbRelevant);
     d3.select('#query_recall.value')
-        .text( ( retrievedRelevants.length / relevants.length ).toFixed(2) );
+        .text( irq.recall.toFixed(2) );
     d3.select('#query_precision.value')
-        .text( (retrievedRelevants.length / retrieveds.length).toFixed(2) );
+        .text( irq.precision.toFixed(2) );
     d3.select('#query_ap.value')
-        .text( (retrievedRelevants.reduce((acc,cur) => acc + cur.precision, 0) / relevants.length).toFixed(2) );
-    
-    let rPrecision = NaN;
-    if (retrieveds.length && relevants.length) {
-        rPrecision = retrieveds[Math.min(relevants.length, retrieveds.length) - 1].precision;
-    }
+        .text( irq.averagePrecision.toFixed(2) );
     d3.select('#query_rprecision.value')
-        .text( (rPrecision).toFixed(2) );
+        .text( irq.rPrecision.toFixed(2) );
 }
 
-function displayDocs(docs, update) {
+/**
+ * 
+ * @param {Doc} doc 
+ */
+function displayId(doc) {
+    return doc.retrieved ? doc.id : "?";
+}
+
+/**
+ * 
+ * @param {InformationRetrievalQuery} irq 
+ * @param {*} update 
+ */
+function displayDocs(irq, update) {
     let ds = d3.select('#all_docs')
         .selectAll('div.doc')
-        .data(docs, d => d.id);
+        .data(irq.docs, d => d.id);
 
     ds.enter()
         .append("div")
         .attr('class', 'doc')
         .on('click', function(d) {
-            d.relevant = !d.relevant;
-            update();
+            if (d.retrieved) {
+                irq.toggleRank(d.rank);
+                update();
+            }
         })
-        .text(d => d.id)
+        .text(displayId)
         .attr('retrieved', d => d.retrieved)
         .attr('relevant', d => d.relevant);
 
@@ -124,16 +181,20 @@ function displayDocs(docs, update) {
         .attr('relevant', d => d.relevant);
 }
 
-function displayRelevants(relevants) {
+/**
+ * 
+ * @param {InformationRetrievalQuery} irq 
+ */
+function displayRelevants(irq) {
     let ds = d3.select('#relevant_docs')
         .selectAll('div.doc')
-        .data(relevants, d => d.id);
+        .data(irq.relevants, d => d.id);
 
     ds.enter()
         .append("div")
         .attr('class', 'doc')
         .attr('docId', d => d.id)
-        .text(d => d.id)
+        .text(displayId)
         .attr('retrieved', d => d.retrieved)
         .attr('relevant', d => d.relevant);
 
@@ -144,10 +205,14 @@ function displayRelevants(relevants) {
         .attr('relevant', d => d.relevant);
 }
 
-function displayRetrieveds(retrieveds) {
+/**
+ * 
+ * @param {InformationRetrievalQuery} irq 
+ */
+function displayRetrieveds(irq) {
     let ds = d3.select('#retrieved_docs')
         .selectAll('.doc_detail')
-        .data(retrieveds, d => d.id);
+        .data(irq.retrieveds, d => d.id);
 
     ds.enter()
         .append('div')
@@ -161,7 +226,7 @@ function displayRetrieveds(retrieveds) {
                 .append('div')
                 .attr('class', 'doc')
                 .attr('docId', d => d.id)
-                .text(d => d.id)
+                .text(displayId)
                 .attr('retrieved', d => d.retrieved)
                 .attr('relevant', d => d.relevant);
             d3.select(this)
@@ -365,273 +430,362 @@ function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrieved
         .attr("d", graph.lineMax);
 }
 
-document.addEventListener("DOMContentLoaded", function(e) {
-   /* Your D3.js here */
-    const NB_DOCS = 26;
-    
-    // Default documents
-    let defaultNbRetrieved = 13;
-    let defaultRelevantIds = ['F','C','E','H','M','O','A'];
-    let docs = Array(NB_DOCS).fill()
-        .map((_, i) => String.fromCharCode('A'.charCodeAt(0) + i))
-        .map((id, i) => ({ 
-            id: id, 
-            retrieved: i < defaultNbRetrieved, 
-            relevant: defaultRelevantIds.includes(id) 
-        }));
+const RELEVANT_CHAR = "R";
+const NONRELEVANT_CHAR = "N";
+/**
+ * 
+ * @param {Doc} docs
+ * @returns {string}
+ */
+function docs2retstr(docs) {
+    return docs.filter(d => d.retrieved)
+        .map(d => (d.relevant) ? RELEVANT_CHAR : NONRELEVANT_CHAR)
+        .join("")
+}
 
-    
-    d3.select('#number_retrieved')
-        .on("change", function() {
-            let nbRetrieved = d3.select(this).property("value");
-            for(let i = 0; i < docs.length; i++) {
-                docs[i].retrieved = i < nbRetrieved;
-            }
-            update();
-        })
-        .attr("value", defaultNbRetrieved );
+/**
+ * 
+ * @param {string} str
+ * @returns {Doc}
+ */
+function retstr2docs(str) {
+    return str.split("").map(c => ({
+        relevant: (c === RELEVANT_CHAR),
+        retrieved: true
+    }))
+}
 
-    let useFormula = false;
-    d3.select('#use_formula_input')
-        .on("change", function() {
-            useFormula = !useFormula;
-            update();
-        });
+/**
+ * 
+ * @param {string} ret 
+ */
+function validateRet(ret) {
+    let foreign = ret.replace(new RegExp(RELEVANT_CHAR, 'g'), "")
+                     .replace(new RegExp(NONRELEVANT_CHAR, 'g'), "");
+    return (foreign.length === 0);
+}
 
+const ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
+const ID_LOG_BASE = Math.log(ID_CHARS.length)
+/**
+ * 
+ * @param {number} max
+ * @returns {string[]}
+ */
+function generateIds(max) {
+    let nFull = Math.floor(max / ID_CHARS.length);
+    let nRemain = max % ID_CHARS.length;
 
-    // Recall-precision graph
-    let g = createRecallPrecisionGraph();
+    let ids = Array.from({ length: nFull }, () => ID_CHARS).flat().concat(ID_CHARS.slice(0, nRemain));
+    let offset = ID_CHARS.length;
+    let nRepeat = offset;
 
-    function update() {
-        let relevants = docs.filter(d => d.relevant);
-        let retrieveds = docs.filter(d => d.retrieved);
-        let retrievedRelevants = retrieveds.filter(d => d.relevant);
+    while(nFull !== 0) {
+        let nTake = ids.length - offset - nFull * nRepeat;
+        nRemain = nFull % ID_CHARS.length;
+        nFull = Math.floor(nFull / ID_CHARS.length);
+
+        // Should not need to generate everything when only parts are used.
+        let repeat = ID_CHARS.map(c => Array(nRepeat).fill(c)).flat();
+        let prefixes = Array.from({ length: nFull }, () => repeat).flat().concat(repeat.slice(0, nTake));
+        
+        for(let i = offset, j = 0; i < ids.length; i++, j++) {
+            ids[i] = prefixes[j] + ids[i];
+        }
+        nRepeat *= ID_CHARS.length;
+        offset += nRepeat;
+    }
+
+    return ids;
+}
+
+/**
+ * 
+ * @param {Doc} docs 
+ * @param {string} prefix 
+ */
+function applyIds(docs, prefix) {
+    let ids = generateIds(docs.length);
+    docs.forEach(function(doc, i) {
+        doc.id = prefix + ids[i];
+    });
+}
+
+class InformationRetrievalQuery {
+    constructor(ret, nbRelevant) {
+        this.setState(ret, nbRelevant);
+    }
+
+    updateNbRelevant(val) {
+        this.setState(this.ret, val);
+        this.changed();
+    }
+
+    updateNbRetrieved(val) {
+        let retrieveds = this.retrieveds;
+        if (val < this.nbRetrieved) {
+            retrieveds = retrieveds.slice(0, val)
+        } else {
+            retrieveds = retrieveds.concat(Array(val - this.nbRetrieved).fill().map(() => ({ retrieved: true, relevant: false })))
+        }
+
+        this.setState(docs2retstr(retrieveds), this.nbRelevant);
+        this.changed();
+    }
+
+    toggleRank(rank) {
+        let d = this.retrieveds[rank];
+        let diff = d.relevant ? -1: 1;
+        let nbRetrievedRelevant = this.nbRetrievedRelevant + diff;
+        let nbRelevant = this.nbRelevant;
+
+        if (nbRetrievedRelevant > this.nbRelevant) {
+            nbRelevant += diff;
+        }
+        d.relevant = !d.relevant;
+
+        this.setState(this.ret, nbRelevant)
+
+        this.changed()
+    }
+
+    setState(ret, nbRelevant) {
+        let retrieveds = retstr2docs(ret);
+        applyIds(retrieveds, "");
 
         // Assign rank to retrieved
         retrieveds.forEach((d, i) => d.rank = i);
-        docs.filter(d => !d.retrieved).forEach(d => d.rank = undefined);
 
         // Calculate precision and recall at rank
-        calculateRankPrecisionAndRecall(retrieveds, relevants);
+        calculateRankPrecisionAndRecall(retrieveds, nbRelevant);
 
-        // Display values
-        displayDocs(docs, update);
-        displayRelevants(relevants);
-        displayRetrieveds(retrieveds);
-        displayStatistics(docs, retrieveds, relevants, retrievedRelevants);
+        /**
+         * @type {RetrievedDoc[]}
+         */
+        this.retrieveds = retrieveds;
 
-        // Recall-precision graph
-        let step = parseInt(d3.select('#standard_recall_level_step').property("value"));
-        let max = useFormula ? 11 : retrievedRelevants.length + 1;
+        /**
+         * @type {RetrievedDoc[]}
+         */
+        this.retrievedRelevants = this.retrieveds.filter(d => d.relevant);
 
-        let stepInput = d3.select('#standard_recall_level_step')
-            .on("change", function() {
-                let step = parseInt(d3.select(this).property("value"));
-                drawRecallPrecisionGraph(g, step, useFormula, retrieveds, retrievedRelevants);
-            })
-            .attr("max", max);
-        if(step > max) {
-            stepInput.property("value", max);
-            step = max;
-        }
-        drawRecallPrecisionGraph(g, step, useFormula, retrieveds, retrievedRelevants);
+        this.setNbRelevant(nbRelevant);
     }
-    
-    update();
 
-/*
-    let recallLevels = Array(11).fill(0);
-    for(let i = 0; i < retrieveds.length; i++) {
-        let d = retrieveds[i]
+    setNbRelevant(nbRelevant) {
+        /**
+         * @type {Doc[]}
+         */
+        this.notRetrievedRelevants = Array(nbRelevant - this.retrievedRelevants.length).fill()
+            .map(_ => ({
+                retrieved: false,
+                relevant: true
+            }))
+        applyIds(this.notRetrievedRelevants, "-");
+
+        /**
+         * @type {Doc[]}
+         */
+        this.relevants = this.retrievedRelevants.concat(this.notRetrievedRelevants);
         
-        let index = Math.floor(d.recall * 10);
-        for(let j = index; j >= 0; j--) {
-            if(recallLevels[j] < d.precision) {
-                recallLevels[j] = d.precision;
-            } else {
-                break;
-            }
-        }
+        /**
+         * @type {Doc[]}
+         */
+        this.docs = this.retrieveds.concat(this.notRetrievedRelevants);
     }
 
-    let interpolateds = retrieveds.map(d => ({...d}))
-    for(let i = 0; i < interpolateds.length; i++) {
-        let d = interpolateds[i]
-        for(let j = i; j >= 0; j--) {
-            if(interpolateds[j].precision < d.precision) {
-                interpolateds[j].precision = d.precision;
-                interpolateds[j].modified = true;
-            }
-        }
-    }
-    //interpolateds = interpolateds.filter(d => !d.modified)
-    let interpolatedsLine = [
-        {
-            id: "first",
-            recall: 0,
-            precision: interpolateds[0].precision
-        },
-        ...interpolateds,
-        {
-            id: "last",
-            recall: 1,
-            precision: 0
-        }
-    ];
-
-
-
-
-
-
-
-    
-
-function standard_recall(svg, step, relevants) {
-    let maxPrecision = 0.0;
-    let stdRecallLevels = Array(11).fill(0);
-    for(let i = 0; i < step && i < relevants.length; i++) {
-        let d = relevants[i]
-        
-        let index = Math.floor(d.recall * 10);
-        for(let j = index; j >= 0; j--) {
-            if(stdRecallLevels[j] < d.precision) {
-                stdRecallLevels[j] = d.precision;
-            } else {
-                break;
-            }
-        }
-    }
-    let interpolation = relevants.map(d => ({...d}));
-    for(let i = 0; i < interpolation.length && i < step; i++) {
-        let d = interpolation[i]
-        for(let j = i; j >= 0; j--) {
-            if(interpolation[j].precision < d.precision) {
-                interpolation[j].precision = d.precision;
-            }
-        }
-    }
-    //interpolateds = interpolateds.filter(d => !d.modified)
-    let interpolationLine = [
-        {
-            id: "first",
-            recall: 0,
-            precision: interpolation[0].precision
-        },
-        ...interpolation,
-        {
-            id: "last",
-            recall: 1,
-            precision: 0
-        }
-    ];
-
-    svg.selectAll(".maxPrecision")
-        .data([interpolationLine[step]])
-        .enter()
-        .append("line")
-        .attr("class", "maxPrecision")
-        .attr("x1", d => x(d.recall))
-        .attr("x2", d => x(d.recall))
-        .attr("y1", d => y(-0.05))
-        .attr("y2", d => y(1.05));
-
-    if(step == 0) {
-
-    } else {
-
-
-        svg.append("path")
-            .datum(interpolationLine.slice(0,step+1), d => d.id)
-            .attr("class", "line")
-            .attr("d", lineMax);
+    changed() {
+        history.pushState({
+            retrieveds: this.ret,
+            nbRelevant: this.nbRelevant
+        }, "", this.link);
     }
 
-    svg.selectAll(".srl")
-        .data(stdRecallLevels)
-        .attr("transform", function(d, i) { return "translate(" +  x(i / 10) + "," + y(d) + ")"; })
-        .enter()
-        .append("path")
-        .attr("class", "srl")
-        .attr("d", d3.symbol().type(d3.symbolSquare).size(40))
-        .attr("transform", function(d, i) { return "translate(" +  x(i / 10) + "," + y(d) + ")"; });
+    get ret() {
+        return docs2retstr(this.retrieveds);
+    }
+
+    get nbRetrieved() {
+        return this.retrieveds.length;
+    }
+
+    get nbRetrievedRelevant() {
+        return this.retrievedRelevants.length;
+    }
+
+    get nbRelevant() {
+        return this.relevants.length;
+    }
+
+    get nbDoc() {
+        return this.docs.length;
+    }
+
+    get link() {
+        return `?ret=${docs2retstr(this.retrieveds)}&nrels=${this.nbRelevant}`
+    }
+
+    get precision() {
+        return this.nbRetrievedRelevant / this.nbRetrieved;
+    }
+
+    get recall() {
+        return this.nbRetrievedRelevant / this.nbRelevant;
+    }
+
+    get averagePrecision() {
+        return this.retrievedRelevants.reduce((acc,cur) => acc + cur.precision, 0) / this.nbRelevant
+    }
+
+    get rPrecision() {
+        let rPrecision = NaN;
+        if (this.nbRetrieved > 0 && this.nbRelevant > 0) {
+            rPrecision = this.retrieveds[Math.min(this.nbRelevant, this.nbRetrieved) - 1].precision;
+        }
+        return rPrecision;
+    }
 }
 
+/**
+ * 
+ * @param {string} queryString 
+ */
+function validateParams(queryString) {
+    let urlParams = new URLSearchParams(queryString);
+    let ret = urlParams.get("ret");
+    let nrels = urlParams.get("nrels");
+    let preMsg = ""
 
-    svg.selectAll(".srl")
-        .data(recallLevels)
-        .enter()
-        .append("path")
-        .attr("class", "srl")
-        .attr("d", d3.symbol().type(d3.symbolSquare).size(40))
-        .attr("transform", function(d, i) { return "translate(" +  x(i / 10) + "," + y(d) + ")"; });
+    if (ret === null) {
+        if (nrels === null || nrels < 0) {
+            // All missing
+            // Suggest default values
+            nrels = 7;
+            ret = "NNRNNRRRNN";
+            preMsg = `<p>You must provide a sequence of retrieved documents (<code>ret</code>) and the number of relevant documents (<code>nrels</code>) in the collection.</p>`
+        } else {
+            // Only nrels
+            if (nrels < 4) {
+                ret = Array.from({ length: nrels }, () => "R").concat(Array.from({ length: 10 - nrels }, () => "N")).shuffle().join("")
+            } else {
+                ret = "NNRNNRRRNN";
+            }
+            preMsg = `<p>You must provide a sequence of retrieved documents (<code>ret</code>).</p>`
+        }
+        let link = `?ret=${ret}&nrels=${nrels}`
+        return {
+            err: true,
+            msg:  preMsg +
+                 `<p>For example <code><a href="${link}">${link}</a></code>. <code>${RELEVANT_CHAR}</code> indicating a relevant retrieved document and <code>${NONRELEVANT_CHAR}</code> indicating a non-relevant retrieved document.</p>` +
+                 `<p><code>nrels</code> must be greater than or equals to the number of <code>${RELEVANT_CHAR}</code> in <code>ret</code></p>`
+        }
+    } else {
+        // Everything is present
+        ret = ret.toUpperCase();
+        if (validateRet(ret)) {
+            let retrieveds = retstr2docs(ret);
+            let retrievedRelevants = retrieveds.filter(d => d.relevant);
+            let nretrels = retrievedRelevants.length
 
-    svg.append("path")
-        .datum(interpolatedsLine, d => d.id)
-        .attr("class", "line")
-        .attr("d", lineMax);
+            if (nrels === null) {
+                // Only ret
+                // Suggest nrels >= nretrels
+                nrels = nretrels;
+                let link = `?ret=${ret}&nrels=${nrels}`;
+                return {
+                    err: true,
+                    msg: `<p>You must provide the number or relevant documents in the collection with the variable <code>nrels</code>.</p>` + 
+                         `<p>If you keep <code>ret</code> the same, then <code>nrels</code> must be greater than or equal to ${nrels}</code>. For example <code><a href="${link}">${link}</a></code></p>`
+                }
+            } else {
+                if (nretrels > nrels) {
+                    let link = `?ret=${ret}&nrels=${nretrels}`
+                    // To few relevants
+                    return {
+                        err: true,
+                        msg: `<p>The number of relevant documents in the collection <code>nrels</code> must be greater than or equal to the number of retrieved relevant documents (<code>${nretrels}</code>)</p>` +
+                        `<p>For example <code><a href="${link}">${link}</a></code>.</p>`
+                    }
+                }
 
-    svg.selectAll("circle")
-        .data(interpolateds, d => d.id)
-        .enter()
-        .append("circle")
-        .attr("class", "dot")
-        .attr("cx", d => x(d.recall))
-        .attr("cy", d => y(d.precision))
-        .attr("r", 4)
-        .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant)
-        .attr('docId', d => d.id);
+                return {
+                    err: false,
+                    irq: new InformationRetrievalQuery(ret, nrels)
+                };
+            }
+        } else {
+            return {
+                err: true,
+                msg: `<p><code>ret</code> is not valid, it must contains only <code>${RELEVANT_CHAR}</code> and <code>${NONRELEVANT_CHAR}</code></p>`
+            }
+        }
+    }
+}
 
-    // create svg element, respecting margins
-    let svg2 = d3.select("#recall_precision")
-      .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-        .attr("transform",
-              "translate(" + margin.left + "," + margin.top + ")");
-    svg2
-      .append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
+document.addEventListener("DOMContentLoaded", function(e) {
+    let validation = validateParams(window.location.search);
+    if (validation.err) {
+        // Show error message
+        d3.select('#msg').append("div").attr("class", "alert alert-warning").html(validation.msg);
+    } else {
+        let irq = validation.irq;
 
-    svg2
-      .append("g")
-      .call(d3.axisLeft(y));
+        window.onpopstate = function(event) {
+            irq.setState(event.state.retrieveds, event.state.nbRelevant);
+            update();
+        };
 
-    // Add X axis label:
-    svg2.append("text")
-        .attr("text-anchor", "end")
-        .attr("x", width)
-        .attr("y", height + margin.top + 20)
-        .text("Recall");
+        d3.select('#number_retrieved')
+            .on("change", function() {
+                let nbRetrieved = d3.select(this).property("value");
+                irq.updateNbRetrieved(nbRetrieved);
+                update();
+            })
+        
+        d3.select('#number_relevant')
+            .on("change", function() {
+                let nbRelevant = d3.select(this).property("value");
+                irq.updateNbRelevant(nbRelevant);
+                update();
+            })
+            .attr("value", irq.nbRelevant)
+            .attr("min", irq.nbRetrievedRelevant );
 
-    // Y axis label:
-    svg2.append("text")
-        .attr("text-anchor", "end")
-        .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left+20)
-        .attr("x", -margin.top)
-        .text("Precision")
+        let useFormula = false;
+        d3.select('#use_formula_input')
+            .on("change", function() {
+                useFormula = !useFormula;
+                update();
+            });
 
-    svg2.append("path")
-        .datum(retrieveds, d => d.id)
-        .attr("class", "line")
-        .attr("d", line);
 
-    svg2.selectAll("circle")
-        .data(retrieveds, d => d.id)
-        .enter()
-        .append("circle")
-        .attr("class", "dot")
-        .attr("cx", d => x(d.recall))
-        .attr("cy", d => y(d.precision))
-        .attr("r", 4)
-        .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant)
-        .attr('docId', d => d.id);
+        // Recall-precision graph
+        let g = createRecallPrecisionGraph();
 
-    standard_recall(svg2, 4, retrievedRelevants);
-*/
+        function update() {
+            // Display values
+            displayDocs(irq, update);
+            displayRelevants(irq);
+            displayRetrieveds(irq);
+            displayStatistics(irq);
+
+            // Recall-precision graph
+            let step = parseInt(d3.select('#standard_recall_level_step').property("value"));
+            let max = useFormula ? 11 : irq.nbRetrievedRelevant + 1;
+
+            let stepInput = d3.select('#standard_recall_level_step')
+                .on("change", function() {
+                    let step = parseInt(d3.select(this).property("value"));
+                    drawRecallPrecisionGraph(g, step, useFormula, irq.retrieveds, irq.retrievedRelevants);
+                })
+                .attr("max", max);
+            if(step > max) {
+                stepInput.property("value", max);
+                step = max;
+            }
+            drawRecallPrecisionGraph(g, step, useFormula, irq.retrieveds, irq.retrievedRelevants);
+        }
+        
+        update();
+    }
 });
