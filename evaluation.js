@@ -413,21 +413,25 @@ function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrieved
         .datum(currentRecall)
         .attr("x1", d => graph.x(d))
         .attr("x2", d => graph.x(d))
-        .attr("y1", d => graph.y(-0.05))
-        .attr("y2", d => graph.y(1.05));
+        .attr("y1", () => graph.y(-0.05))
+        .attr("y2", () => graph.y(1.05))
+        .style("visibility", () => (step == 0) ? 'hidden' : 'visible');
 
     graph.svg.selectAll(".srl")
         .data(stdRecallLevels)
         .attr("transform", function(d, i) { return "translate(" +  graph.x(i / 10) + "," + graph.y(d) + ")"; })
+        .style("visibility", () => (step == 0) ? 'hidden' : 'visible')
         .enter()
         .append("path")
+        .style("visibility", () => (step == 0) ? 'hidden' : 'visible')
         .attr("class", "srl")
         .attr("d", d3.symbol().type(d3.symbolSquare).size(40))
         .attr("transform", function(d, i) { return "translate(" +  graph.x(i / 10) + "," + graph.y(d) + ")"; });
     
     graph.svg.select(".interpolation_line")
         .datum(interpolation, d => d.id)
-        .attr("d", graph.lineMax);
+        .attr("d", graph.lineMax)
+        .style("visibility", () => (step == 0) ? 'hidden' : 'visible');
 }
 
 const RELEVANT_CHAR = "R";
