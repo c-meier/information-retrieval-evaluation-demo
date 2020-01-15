@@ -158,26 +158,20 @@ function displayId(doc) {
  */
 function displayDocs(irq, update) {
     let ds = d3.select('#all_docs')
-        .selectAll('div.doc')
-        .data(irq.docs, d => d.id);
-
-    ds.enter()
-        .append("div")
-        .attr('class', 'doc')
-        .on('click', function(d) {
+      .selectAll('div.doc')
+      .data(irq.docs, d => d.id)
+      .join(
+        enter => enter.append("div")
+            .attr('class', 'doc')
+            .text(displayId)
+          .on('click', function(d) {
             if (d.retrieved) {
-                irq.toggleRank(d.rank);
-                update();
+              irq.toggleRank(d.rank);
+              update();
             }
-        })
-        .text(displayId)
+          })
+      )
         .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant);
-
-    ds.exit()
-        .remove();
-    
-    ds.attr('retrieved', d => d.retrieved)
         .attr('relevant', d => d.relevant);
 }
 
@@ -187,21 +181,15 @@ function displayDocs(irq, update) {
  */
 function displayRelevants(irq) {
     let ds = d3.select('#relevant_docs')
-        .selectAll('div.doc')
-        .data(irq.relevants, d => d.id);
-
-    ds.enter()
-        .append("div")
-        .attr('class', 'doc')
-        .attr('docId', d => d.id)
-        .text(displayId)
+      .selectAll('div.doc')
+      .data(irq.relevants, d => d.id)
+      .join(
+        enter => enter.append("div")
+            .attr('class', 'doc')
+            .attr('docId', d => d.id)
+            .text(displayId)
+      )
         .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant);
-
-    ds.exit()
-        .remove();
-    
-    ds.attr('retrieved', d => d.retrieved)
         .attr('relevant', d => d.relevant);
 }
 
@@ -211,49 +199,41 @@ function displayRelevants(irq) {
  */
 function displayRetrieveds(irq) {
     let ds = d3.select('#retrieved_docs')
-        .selectAll('.doc_detail')
-        .data(irq.retrieveds, d => d.id);
-
-    ds.enter()
-        .append('div')
-        .attr('class', 'doc_detail')
-        .each(function (n, i) {
+      .selectAll('.doc_detail')
+      .data(irq.retrieveds, d => d.id)
+      .join(
+        enter => enter.append('div')
+            .attr('class', 'doc_detail')
+          .each(function (n, i) {
             d3.select(this)
-                .append('div')
+              .append('div')
                 .attr("class", "rank")
                 .text(d => d.rank);
             d3.select(this)
-                .append('div')
+              .append('div')
                 .attr('class', 'doc')
                 .attr('docId', d => d.id)
-                .text(displayId)
-                .attr('retrieved', d => d.retrieved)
-                .attr('relevant', d => d.relevant);
+                .text(displayId);
             d3.select(this)
-                .append('div')
-                .attr("class", "rank_precision")
-                .text(d => d.precision.toFixed(2));
+              .append('div')
+                .attr("class", "rank_precision");
             d3.select(this)
-                .append('div')
-                .attr("class", "rank_recall")
-                .text(d => d.recall.toFixed(2));
-        });
-
-    ds.exit()
-        .remove();
-    
-    ds.each(function (n, i) {
+              .append('div')
+                .attr("class", "rank_recall");
+          })
+      )
+      .each(function (n, i) {
         d3.select(this)
-            .select('.doc')
+          .select('.doc')
             .attr('retrieved', d => d.retrieved)
             .attr('relevant', d => d.relevant);
         d3.select(this)
-            .select('.rank_precision')
+          .select('.rank_precision')
             .text(d => d.precision.toFixed(2));
         d3.select(this)
-            .select('.rank_recall')
+          .select('.rank_recall')
             .text(d => d.recall.toFixed(2));
-    });
+      });
 }
 
 function createRecallPrecisionGraph() {
@@ -275,7 +255,7 @@ function createRecallPrecisionGraph() {
     let x = d3.scaleLinear().domain([0, 1]).range([0, width]);
     svg
       .append("g")
-      .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(0," + height + ")")
       .call(d3.axisBottom(x));
 
     // Add Y axis
@@ -338,7 +318,7 @@ function createRecallPrecisionGraph() {
 function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrievedRelevants) {
     if(retrievedRelevants.length > 0) {
         graph.svg.select(".recall_precision_line")
-            .datum(retrieveds)
+          .datum(retrieveds)
             .attr("d", graph.line);
     } else {
         graph.svg.select(".recall_precision_line")
@@ -346,25 +326,17 @@ function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrieved
     }
 
     let retDots = graph.svg.selectAll("circle")
-        .data(retrieveds, d => d.id)
-    
-    retDots.enter()
-        .append("circle")
-        .attr("class", "dot")
+      .data(retrieveds, d => d.id)
+      .join(
+        enter => enter.append("circle")
+            .attr("class", "dot")
+            .attr("r", 4)
+            .attr('docId', d => d.id)
+      )
         .attr("cx", d => graph.x(d.recall))
         .attr("cy", d => graph.y(d.precision))
-        .attr("r", 4)
         .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant)
-        .attr('docId', d => d.id);
-
-    retDots.exit()
-        .remove();
-
-    retDots.attr("cx", d => graph.x(d.recall))
-        .attr("cy", d => graph.y(d.precision))
-        .attr('retrieved', d => d.retrieved)
-        .attr('relevant', d => d.relevant)
+        .attr('relevant', d => d.relevant);
 
     let spliceEnd = useFormula ? retrievedRelevants.length : step;
     let slice = retrievedRelevants.slice(0, spliceEnd);
@@ -406,11 +378,11 @@ function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrieved
     }
 
     graph.svg.select(".line_to_max")
-        .datum(lineToMax)
+      .datum(lineToMax)
         .attr("d", graph.lineMax);
 
     graph.svg.select(".separation")
-        .datum(currentRecall)
+      .datum(currentRecall)
         .attr("x1", d => graph.x(d))
         .attr("x2", d => graph.x(d))
         .attr("y1", () => graph.y(-0.05))
@@ -418,18 +390,17 @@ function drawRecallPrecisionGraph(graph, step, useFormula, retrieveds, retrieved
         .style("visibility", () => (step == 0) ? 'hidden' : 'visible');
 
     graph.svg.selectAll(".srl")
-        .data(stdRecallLevels)
+      .data(stdRecallLevels)
+      .join(
+        enter => enter.append("path")
+            .attr("class", "srl")
+            .attr("d", d3.symbol().type(d3.symbolSquare).size(40))
+      )
         .attr("transform", function(d, i) { return "translate(" +  graph.x(i / 10) + "," + graph.y(d) + ")"; })
         .style("visibility", () => (step == 0) ? 'hidden' : 'visible')
-        .enter()
-        .append("path")
-        .style("visibility", () => (step == 0) ? 'hidden' : 'visible')
-        .attr("class", "srl")
-        .attr("d", d3.symbol().type(d3.symbolSquare).size(40))
-        .attr("transform", function(d, i) { return "translate(" +  graph.x(i / 10) + "," + graph.y(d) + ")"; });
     
     graph.svg.select(".interpolation_line")
-        .datum(interpolation, d => d.id)
+      .datum(interpolation, d => d.id)
         .attr("d", graph.lineMax)
         .style("visibility", () => (step == 0) ? 'hidden' : 'visible');
 }
@@ -730,7 +701,10 @@ document.addEventListener("DOMContentLoaded", function(e) {
     let validation = validateParams(window.location.search);
     if (validation.err) {
         // Show error message
-        d3.select('#msg').append("div").attr("class", "alert alert-warning").html(validation.msg);
+        d3.select('#msg')
+          .append("div")
+            .attr("class", "alert alert-warning")
+            .html(validation.msg);
     } else {
         let irq = validation.irq;
 
@@ -740,27 +714,27 @@ document.addEventListener("DOMContentLoaded", function(e) {
         };
 
         d3.select('#number_retrieved')
-            .on("change", function() {
-                let nbRetrieved = d3.select(this).property("value");
-                irq.updateNbRetrieved(nbRetrieved);
-                update();
-            })
+          .on("change", function() {
+            let nbRetrieved = d3.select(this).property("value");
+            irq.updateNbRetrieved(nbRetrieved);
+            update();
+          })
         
         d3.select('#number_relevant')
-            .on("change", function() {
-                let nbRelevant = d3.select(this).property("value");
-                irq.updateNbRelevant(nbRelevant);
-                update();
-            })
+          .on("change", function() {
+            let nbRelevant = d3.select(this).property("value");
+            irq.updateNbRelevant(nbRelevant);
+            update();
+          })
             .attr("value", irq.nbRelevant)
             .attr("min", irq.nbRetrievedRelevant );
 
         let useFormula = false;
         d3.select('#use_formula_input')
-            .on("change", function() {
-                useFormula = !useFormula;
-                update();
-            });
+          .on("change", function() {
+            useFormula = !useFormula;
+            update();
+          });
 
 
         // Recall-precision graph
@@ -778,10 +752,10 @@ document.addEventListener("DOMContentLoaded", function(e) {
             let max = useFormula ? 11 : irq.nbRetrievedRelevant + 1;
 
             let stepInput = d3.select('#standard_recall_level_step')
-                .on("change", function() {
-                    let step = parseInt(d3.select(this).property("value"));
-                    drawRecallPrecisionGraph(g, step, useFormula, irq.retrieveds, irq.retrievedRelevants);
-                })
+              .on("change", function() {
+                let step = parseInt(d3.select(this).property("value"));
+                drawRecallPrecisionGraph(g, step, useFormula, irq.retrieveds, irq.retrievedRelevants);
+              })
                 .attr("max", max);
             if(step > max) {
                 stepInput.property("value", max);
