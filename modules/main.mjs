@@ -196,6 +196,11 @@ function applyIds(docs, prefix) {
 class InformationRetrievalQuery {
     constructor(ret, nbRelevant) {
         this.setState(ret, nbRelevant);
+
+        history.replaceState({
+            retrieveds: ret,
+            nbRelevant: nbRelevant
+        }, "", this.link);
     }
 
     updateNbRelevant(val) {
@@ -348,6 +353,7 @@ document.addEventListener("DOMContentLoaded",function(){
     
         window.onpopstate = function(event) {
             irq.setState(event.state.retrieveds, event.state.nbRelevant);
+            irq.update();
         };
 
         Doc.create(irq);
